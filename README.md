@@ -1,4 +1,6 @@
 # ESP32 Weather
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+
 墨水屏天气提醒助手
 首次发布将基于 esp32-c6 芯片
 使用 心知天气 API
@@ -32,9 +34,9 @@ A：
 A：1. 因为 AI 推荐这个 API；2. 因为我没找到 心知天气 好用的 Homeassistant 插件，所以刚好我自己做一个
 
 ## 相关的开源项目
-[和风天气 Home Assistant 插件](https://github.com/cheny95/qweather#%E5%92%8C%E9%A3%8E%E5%A4%A9%E6%B0%94-home-assistant-%E6%8F%92%E4%BB%B6)
-[彩云天气 Homeassistant 插件](https://github.com/hasscc/tianqi)
-[ESP32-e-Paper-Weather-Display](https://github.com/G6EJD/ESP32-e-Paper-Weather-Display)
+- [和风天气 Home Assistant 插件](https://github.com/cheny95/qweather#%E5%92%8C%E9%A3%8E%E5%A4%A9%E6%B0%94-home-assistant-%E6%8F%92%E4%BB%B6)
+- [彩云天气 Homeassistant 插件](https://github.com/hasscc/tianqi)
+- [ESP32-e-Paper-Weather-Display](https://github.com/G6EJD/ESP32-e-Paper-Weather-Display)
 
 ## 目录结构（草稿）
 ```txt
