@@ -12,7 +12,20 @@
 ## 项目将包含
 1. 一个Homeassistant插件
 2. ESP32 实现源码
+3. 提供最简单的面包板接线实现方案
 4. 硬件PCB设计图、3D外壳文件
+
+## FAQ
+Q：为什么选择 ESP32-C6 和 墨水屏 实现？
+A：低功耗考虑。因为这个硬件肯定是锂电池或者纽扣电池供电，场景不需要持续性进行通信，ESP32-C6 和 墨水屏 都能尽可能的让硬件工作的时间更长，比如最好是3个月充一次电或者换一个电池
+
+Q：为什么考虑用 Homeassistant 集成，而不是直接 ESP32-C6 通过 WIFI 请求 心知天气的API？
+A：1. 我希望借这个项目深入理解 Homeassistant 的插件开发；
+2. Homeassistant 是 python 代码，不需要编译、烧录之类的操作，使用者自己DIY的可能性更高；
+3. 使用者可能不止这一个硬件，可能有多个天气设备，那 Homeassistant 的扩展性就会更强，一套 API 可能通过 MQTT 发消息给多个设备
+
+Q：为什么选择 心知天气 API？
+A：1. 因为 AI 推荐这个 API；2. 以为我没找到 心知天气 好用的 Homeassistant 插件，所以刚好我自己做一个
 
 ## 相关的开源项目
 [和风天气 Home Assistant 插件](https://github.com/cheny95/qweather#%E5%92%8C%E9%A3%8E%E5%A4%A9%E6%B0%94-home-assistant-%E6%8F%92%E4%BB%B6)
