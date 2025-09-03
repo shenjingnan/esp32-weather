@@ -1,0 +1,100 @@
+# ESP-IDF构建输出目录
+build/
+
+# ESP-IDF配置文件（动态生成）
+sdkconfig
+sdkconfig.old
+
+# ESP-IDF依赖锁定文件
+dependencies.lock
+
+# ESP-IDF管理的组件
+managed_components/
+
+# Flash工具生成的文件
+*.bin
+*.elf
+*.map
+*.flash_args
+
+# 编译器生成的文件
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+
+# 调试文件
+*.gdb
+*.dSYM/
+
+# IDE相关文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows系统文件
+*.log
+*.tmp
+*.temp
+
+# Python字节码
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# 临时文件和备份
+*.bak
+*.backup
+*.tmp
+*.temp
+*.orig
+
+# 密钥和证书文件（注意：示例项目中的测试证书除外）
+*.key
+*.pem
+*.crt
+*.p12
+!*test*.pem
+!*example*.pem
+!*demo*.pem
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
+
+# 日志文件
+*.log
+logs/
+
+# 测试输出
+test_results/
+coverage/
+
+# 文档生成输出
+docs/_build/
+docs/html/
+docs/latex/
+
+# 个人配置文件
+config.local
+local_config.h
