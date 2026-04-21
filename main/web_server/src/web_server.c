@@ -84,6 +84,20 @@ esp_err_t start_web_server(void)
         .user_ctx  = NULL,
     };
 
+    httpd_uri_t api_wifi_scan_uri = {
+        .uri       = "/api/wifi/scan",
+        .method    = HTTP_GET,
+        .handler   = rest_api_get_wifi_scan,
+        .user_ctx  = NULL,
+    };
+
+    httpd_uri_t api_wifi_status_uri = {
+        .uri       = "/api/wifi/status",
+        .method    = HTTP_GET,
+        .handler   = rest_api_get_wifi_status,
+        .user_ctx  = NULL,
+    };
+
     esp_err_t ret = httpd_start(&s_server, &config);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to start HTTP server: %s", esp_err_to_name(ret));
@@ -96,6 +110,8 @@ esp_err_t start_web_server(void)
     httpd_register_uri_handler(s_server, &api_system_info_uri);
     httpd_register_uri_handler(s_server, &api_wifi_connect_uri);
     httpd_register_uri_handler(s_server, &api_system_config_uri);
+    httpd_register_uri_handler(s_server, &api_wifi_scan_uri);
+    httpd_register_uri_handler(s_server, &api_wifi_status_uri);
 
     ESP_LOGI(TAG, "Web server started on port %d", config.server_port);
     return ESP_OK;
