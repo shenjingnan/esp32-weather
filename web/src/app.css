@@ -208,6 +208,177 @@ body {
   gap: 12px;
 }
 
+/* ====== WiFi Scan & Connect Styles ====== */
+
+/* Outline button variant */
+.btn-outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.btn-outline:hover {
+  background: rgba(25, 118, 210, 0.06);
+}
+
+.btn-outline:disabled {
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 13px;
+}
+
+/* WiFi scan results list */
+.wifi-list {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  margin-top: 8px;
+  margin-bottom: 12px;
+  background: #fafafa;
+}
+
+/* Individual WiFi network item */
+.wifi-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  transition: background 0.15s ease;
+}
+
+.wifi-item:last-child {
+  border-bottom: none;
+}
+
+.wifi-item:hover {
+  background: #e8f0fe;
+}
+
+.wifi-item:active {
+  background: #d0e2f7;
+}
+
+/* SSID name text */
+.wifi-name {
+  flex: 1;
+  font-size: 14px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
+/* Meta area: lock icon + signal bars */
+.wifi-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Lock icon for encrypted networks */
+.wifi-lock {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* Signal strength bars container */
+.wifi-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  height: 14px;
+  gap: 1px;
+}
+
+/* Individual bar segment */
+.wifi-bars span {
+  display: block;
+  width: 3px;
+  background: #ccc;
+  border-radius: 1px;
+}
+
+/* Active (filled) bar */
+.wifi-bars span.on {
+  background: var(--color-primary);
+}
+
+/* Four different heights for bars 1-4 */
+.wifi-bars span:nth-child(1) { height: 4px; }
+.wifi-bars span:nth-child(2) { height: 7px; }
+.wifi-bars span:nth-child(3) { height: 10px; }
+.wifi-bars span:nth-child(4) { height: 14px; }
+
+/* Connection status message area */
+.wifi-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.wifi-status-success {
+  background: #e8f5e9;
+  color: var(--color-success);
+  border: 1px solid #c8e6c9;
+}
+
+.wifi-status-error {
+  background: #ffebee;
+  color: var(--color-error);
+  border: 1px solid #ffcdd2;
+}
+
+.wifi-status-pending {
+  background: #e3f2fd;
+  color: var(--color-primary);
+  border: 1px solid #bbdefb;
+}
+
+/* Spinner animation for connecting state */
+.wifi-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Scan error / empty message */
+.scan-error,
+.scan-empty {
+  text-align: center;
+  padding: 16px 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.scan-empty {
+  color: var(--color-border);
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .app {
