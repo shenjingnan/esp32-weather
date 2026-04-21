@@ -10,3 +10,31 @@ menu "Example Configuration"
         help
             HTTP response is accumulated in output_buffer. Enable this config to print the accumulated response
 endmenu
+
+menu "Web Server Configuration"
+    config ENABLE_WEB_SERVER
+        bool "Enable embedded web server"
+        default y
+        help
+            Enable the embedded HTTP server with Preact-based UI.
+            Requires frontend to be built (npm build in web/ directory).
+
+    config WEB_SERVER_PORT
+        int "Web server port"
+        default 80
+        range 80 65535
+        help
+            TCP port for the embedded HTTP server.
+
+    config WEB_MOUNT_POINT
+        string "Web files mount point in VFS"
+        default "/www"
+        help
+            VFS path where LittleFS partition (containing web assets) is mounted.
+
+    config MDNS_HOST_NAME
+        string "mDNS hostname"
+        default "esp32-weather"
+        help
+            mDNS hostname for accessing the device via http://<hostname>.local
+endmenu
