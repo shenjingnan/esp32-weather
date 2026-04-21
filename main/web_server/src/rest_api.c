@@ -5,6 +5,7 @@
 #include <esp_log.h>
 #include <cJSON.h>
 #include <string.h>
+#include "esp_wifi.h"
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include <esp_chip_info.h>
@@ -23,6 +24,27 @@ static esp_err_t send_json_response(httpd_req_t *req, int code, cJSON *json)
     free((void *)response);
     cJSON_Delete(json);
     return ESP_OK;
+}
+
+/* WiFi connection state tracking */
+static volatile int s_wifi_connect_state = 0;  /* 0=idle, 1=connecting, 2=connected, 3=failed */
+static char s_wifi_status_ip[16] = {0};
+static char s_wifi_fail_reason[64] = {0};
+
+/* Helper: convert RSSI to signal bars (0-4) */
+static int rssi_to_bars(int rssi)
+{
+    if (rssi >= -50) return 4;
+    if (rssi >= -60) return 3;
+    if (rssi >= -70) return 2;
+    if (rssi >= -80) return 1;
+    return 0;
+}
+
+/* Helper: check if WiFi requires authentication */
+static bool is_encrypted(wifi_auth_mode_t auth_mode)
+{
+    return auth_mode != WIFI_AUTH_OPEN;
 }
 
 /* GET /api/weather - Return weather data */
@@ -111,6 +133,11 @@ esp_err_t rest_api_post_wifi_connect(httpd_req_t *req)
 
     ESP_LOGI(TAG, "WiFi connect request: SSID='%s'", ssid->valuestring);
 
+    /* Update connection state to connecting */
+    s_wifi_connect_state = 1;
+    s_wifi_status_ip[0] = '\0';
+    s_wifi_fail_reason[0] = '\0';
+
     /* TODO: Call wifi_manager to connect with provided credentials */
 
     cJSON *resp = cJSON_CreateObject();
@@ -172,4 +199,91 @@ esp_err_t rest_api_post_system_config(httpd_req_t *req)
     send_json_response(req, 200, resp);
 
     return ESP_OK;
+}
+
+/* GET /api/wifi/scan - Scan nearby WiFi access points */
+esp_err_t rest_api_get_wifi_scan(httpd_req_t *req)
+{
+    wifi_scan_config_t scan_config = {
+        .ssid = NULL,
+        .bssid = NULL,
+        .channel = 0,
+        .show_hidden = false,
+        .scan_type = WIFI_SCAN_TYPE_ACTIVE,
+        .scan_time.active.min = 0,
+        .scan_time.active.max = 120,
+    };
+
+    esp_err_t ret = esp_wifi_scan_start(&scan_config, true);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "WiFi scan failed: %s", esp_err_to_name(ret));
+        cJSON *err_resp = cJSON_CreateObject();
+        cJSON_AddStringToObject(err_resp, "error", "scan_failed");
+        send_json_response(req, 500, err_resp);
+        return ESP_OK;
+    }
+
+    uint16_t ap_count = 0;
+    esp_wifi_scan_get_ap_num(&ap_count);
+
+    if (ap_count == 0) {
+        cJSON *empty_arr = cJSON_CreateArray();
+        httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+        return send_json_response(req, 200, empty_arr);
+    }
+
+    if (ap_count > 20) {
+        ap_count = 20;
+    }
+
+    wifi_ap_record_t ap_records[20];
+    uint16_t actual_count = ap_count;
+    esp_wifi_scan_get_ap_records(&actual_count, ap_records);
+
+    cJSON *arr = cJSON_CreateArray();
+    for (int i = 0; i < actual_count; i++) {
+        char escaped_ssid[128] = {0};
+        const char *src = (const char *)ap_records[i].ssid;
+        int epos = 0;
+        for (int j = 0; src[j] && epos < (int)sizeof(escaped_ssid) - 2; j++) {
+            if (src[j] == '"' || src[j] == '\\') {
+                if (epos < (int)sizeof(escaped_ssid) - 2) {
+                    escaped_ssid[epos++] = '\\';
+                }
+            }
+            if ((unsigned char)src[j] >= 0x20) {
+                escaped_ssid[epos++] = src[j];
+            }
+        }
+
+        cJSON *ap_obj = cJSON_CreateObject();
+        cJSON_AddStringToObject(ap_obj, "ssid", escaped_ssid);
+        cJSON_AddNumberToObject(ap_obj, "rssi", ap_records[i].rssi);
+        cJSON_AddNumberToObject(ap_obj, "bars", rssi_to_bars(ap_records[i].rssi));
+        cJSON_AddBoolToObject(ap_obj, "encrypted", is_encrypted(ap_records[i].authmode));
+        cJSON_AddNumberToObject(ap_obj, "channel", ap_records[i].primary);
+        cJSON_AddItemToArray(arr, ap_obj);
+    }
+
+    httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+    return send_json_response(req, 200, arr);
+}
+
+/* GET /api/wifi/status - Query current WiFi connection status */
+esp_err_t rest_api_get_wifi_status(httpd_req_t *req)
+{
+    const char *status_str;
+    switch (s_wifi_connect_state) {
+        case 1:  status_str = "connecting"; break;
+        case 2:  status_str = "connected";  break;
+        case 3:  status_str = "failed";     break;
+        default: status_str = "idle";       break;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "status", status_str);
+    cJSON_AddStringToObject(root, "ip", s_wifi_status_ip);
+    cJSON_AddStringToObject(root, "reason", s_wifi_fail_reason);
+
+    return send_json_response(req, 200, root);
 }

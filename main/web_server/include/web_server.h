@@ -25,4 +25,14 @@ esp_err_t start_web_server(void);
  */
 esp_err_t stop_web_server(void);
 
+/**
+ * @brief GET /api/wifi/scan handler - Scan nearby WiFi APs
+ */
+esp_err_t rest_api_get_wifi_scan(httpd_req_t *req);
+
+/**
+ * @brief GET /api/wifi/status handler - Query WiFi connection status
+ */
+esp_err_t rest_api_get_wifi_status(httpd_req_t *req);
+
 #endif /* WEB_SERVER_H */
