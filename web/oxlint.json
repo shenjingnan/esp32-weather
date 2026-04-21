@@ -1,0 +1,1 @@
+{"$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/crates/oxc_linter/config/oxlint.schema.json", "categories": {"correctness": "warn", "style": "warn", "suspicious": "warn"}}
