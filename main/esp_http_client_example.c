@@ -27,6 +27,7 @@
 #include "esp_system.h"
 
 #include "esp_http_client.h"
+#include "oled_display.h"
 
 #define MAX_HTTP_RECV_BUFFER 512
 #define MAX_HTTP_OUTPUT_BUFFER 2048
@@ -876,6 +877,10 @@ void app_main(void)
       ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+
+    /* ---- OLED 显示初始化 ---- */
+    oled_init();
+    oled_show_text("Hello World");
 
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
