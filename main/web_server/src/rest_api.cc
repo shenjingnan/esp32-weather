@@ -156,6 +156,10 @@ esp_err_t rest_api_post_wifi_connect(httpd_req_t *req)
         sta_config.sta.threshold.authmode = WIFI_AUTH_OPEN;
     }
 
+    // 保存 SSID 字符串，因为 cJSON_Delete 后会释放
+    char ssid_buf[33] = {0};
+    strncpy(ssid_buf, ssid->valuestring, sizeof(ssid_buf) - 1);
+
     cJSON_Delete(root);
 
     esp_err_t ret = esp_wifi_set_config(WIFI_IF_STA, &sta_config);
@@ -188,7 +192,7 @@ esp_err_t rest_api_post_wifi_connect(httpd_req_t *req)
         return ESP_OK;
     }
 
-    ESP_LOGI(TAG, "WiFi connection initiated for SSID: '%s'", ssid->valuestring);
+    ESP_LOGI(TAG, "WiFi connection initiated for SSID: '%s'", ssid_buf);
 
     cJSON *resp = cJSON_CreateObject();
     cJSON_AddNumberToObject(resp, "code", 200);

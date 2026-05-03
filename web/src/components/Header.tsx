@@ -7,6 +7,7 @@ interface HeaderProps {
 
 const NAV_ITEMS = [
   { path: '/', label: '首页' },
+  { path: '/wifi', label: '配网' },
   { path: '/settings', label: '设置' },
   { path: '/status', label: '状态' },
 ];

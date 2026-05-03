@@ -379,6 +379,40 @@ body {
   color: var(--color-border);
 }
 
+/* ====== WiFi Portal (standalone captive portal) ====== */
+.wifi-portal {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 16px;
+  background: #f0f2f5;
+}
+
+.wifi-card {
+  background: var(--color-surface);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.wifi-card-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.wifi-card-desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .app {
