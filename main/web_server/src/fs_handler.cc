@@ -30,6 +30,7 @@ static const char *get_content_type(const char *path)
 
 esp_err_t fs_static_get_handler(httpd_req_t *req)
 {
+    ESP_LOGI(TAG, "Request: %s", req->uri);  // 诊断日志：确认 handler 被调用
     const char *mount_point = static_cast<const char *>(req->user_ctx);
     char filepath[512];
 

@@ -6,6 +6,9 @@
 #include <esp_littlefs.h>
 #include <esp_log.h>
 #include <cstring>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 static const char *TAG = "web_server";
 
@@ -58,11 +61,91 @@ esp_err_t start_web_server(void)
     config.lru_purge_enable = true;
 
     /* Register URI handlers */
-    httpd_uri_t static_file_uri = {
-        .uri       = "/*",
+
+    // GET / — 从 LittleFS 读取 index.html 并返回
+    static auto root_handler = [](httpd_req_t *req) -> esp_err_t {
+        const char *mount = CONFIG_WEB_MOUNT_POINT;
+        char filepath[128];
+        snprintf(filepath, sizeof(filepath), "%s/index.html", mount);
+
+        ESP_LOGI(TAG, "Serving: %s", filepath);
+
+        struct stat st;
+        if (stat(filepath, &st) != 0) {
+            ESP_LOGE(TAG, "File not found: %s", filepath);
+            httpd_resp_send_404(req);
+            return ESP_FAIL;
+        }
+
+        int fd = open(filepath, O_RDONLY);
+        if (fd < 0) {
+            ESP_LOGE(TAG, "Failed to open: %s", filepath);
+            httpd_resp_send_500(req);
+            return ESP_FAIL;
+        }
+
+        httpd_resp_set_type(req, "text/html");
+
+        char buf[512];
+        ssize_t n;
+        while ((n = read(fd, buf, sizeof(buf))) > 0) {
+            httpd_resp_send_chunk(req, buf, n);
+        }
+        close(fd);
+        httpd_resp_send_chunk(req, nullptr, 0);
+        return ESP_OK;
+    };
+
+    httpd_uri_t root_uri = {
+        .uri       = "/",
         .method    = HTTP_GET,
-        .handler   = fs_static_get_handler,
-        .user_ctx  = const_cast<char *>(CONFIG_WEB_MOUNT_POINT),
+        .handler   = root_handler,
+        .user_ctx  = nullptr,
+    };
+
+    // GET /assets/* — 从 LittleFS 读取静态资源文件
+    static auto assets_handler = [](httpd_req_t *req) -> esp_err_t {
+        const char *mount = CONFIG_WEB_MOUNT_POINT;
+        char filepath[512];
+        // req->uri 形如 "/assets/xxx.js"，直接拼接到 mount 路径后
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+        snprintf(filepath, sizeof(filepath), "%s%s", mount, req->uri);
+#pragma GCC diagnostic pop
+
+        ESP_LOGI(TAG, "Serving asset: %s", filepath);
+
+        int fd = open(filepath, O_RDONLY);
+        if (fd < 0) {
+            ESP_LOGW(TAG, "Asset not found: %s", filepath);
+            httpd_resp_send_404(req);
+            return ESP_FAIL;
+        }
+
+        // 根据扩展名设置 Content-Type
+        const char *type = "application/octet-stream";
+        if (strstr(req->uri, ".css"))  type = "text/css";
+        if (strstr(req->uri, ".js"))   type = "application/javascript";
+        if (strstr(req->uri, ".json")) type = "application/json";
+        if (strstr(req->uri, ".png"))  type = "image/png";
+        if (strstr(req->uri, ".svg"))  type = "image/svg+xml";
+        httpd_resp_set_type(req, type);
+
+        char buf[1024];
+        ssize_t n;
+        while ((n = read(fd, buf, sizeof(buf))) > 0) {
+            httpd_resp_send_chunk(req, buf, n);
+        }
+        close(fd);
+        httpd_resp_send_chunk(req, nullptr, 0);
+        return ESP_OK;
+    };
+
+    httpd_uri_t assets_uri = {
+        .uri       = "/assets/*",
+        .method    = HTTP_GET,
+        .handler   = assets_handler,
+        .user_ctx  = nullptr,
     };
 
     httpd_uri_t api_weather_uri = {
@@ -114,7 +197,8 @@ esp_err_t start_web_server(void)
     }
 
     /* Register all handlers */
-    httpd_register_uri_handler(s_server, &static_file_uri);
+    httpd_register_uri_handler(s_server, &root_uri);
+    httpd_register_uri_handler(s_server, &assets_uri);
     httpd_register_uri_handler(s_server, &api_weather_uri);
     httpd_register_uri_handler(s_server, &api_system_info_uri);
     httpd_register_uri_handler(s_server, &api_wifi_connect_uri);
