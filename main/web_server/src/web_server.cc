@@ -39,9 +39,50 @@ esp_err_t init_web_fs(void)
     return ESP_OK;
 }
 
-// HTTP 404 — 重定向到根页面（Captive Portal 支持）
-static esp_err_t captive_portal_redirect_handler(httpd_req_t *req, httpd_err_code_t err)
+// HTTP 404 — 尝试从 LittleFS 服务文件，不存在则重定向到 /（Captive Portal）
+static esp_err_t not_found_handler(httpd_req_t *req, httpd_err_code_t err)
 {
+    const char *mount = CONFIG_WEB_MOUNT_POINT;
+    const char *uri = req->uri;
+
+    // 跳过 API 路径（它们有精确匹配的 handler，不会到这里）
+    if (strncmp(uri, "/api/", 5) == 0) {
+        httpd_resp_send_404(req);
+        return ESP_FAIL;
+    }
+
+    // 尝试从 LittleFS 读取文件
+    char filepath[512];
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+    snprintf(filepath, sizeof(filepath), "%s%s", mount, uri);
+#pragma GCC diagnostic pop
+
+    int fd = open(filepath, O_RDONLY);
+    if (fd >= 0) {
+        ESP_LOGI(TAG, "404→file: %s", filepath);
+
+        const char *type = "application/octet-stream";
+        if (strstr(uri, ".html")) type = "text/html";
+        if (strstr(uri, ".css"))  type = "text/css";
+        if (strstr(uri, ".js"))   type = "application/javascript";
+        if (strstr(uri, ".json")) type = "application/json";
+        if (strstr(uri, ".png"))  type = "image/png";
+        if (strstr(uri, ".svg"))  type = "image/svg+xml";
+        httpd_resp_set_type(req, type);
+
+        char buf[1024];
+        ssize_t n;
+        while ((n = read(fd, buf, sizeof(buf))) > 0) {
+            httpd_resp_send_chunk(req, buf, n);
+        }
+        close(fd);
+        httpd_resp_send_chunk(req, nullptr, 0);
+        return ESP_OK;
+    }
+
+    // 文件不存在: SPA 回退或 Captive Portal 重定向
+    ESP_LOGI(TAG, "404→redirect: %s", uri);
     httpd_resp_set_status(req, "302 Temporary Redirect");
     httpd_resp_set_hdr(req, "Location", "/");
     httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
@@ -70,13 +111,6 @@ esp_err_t start_web_server(void)
 
         ESP_LOGI(TAG, "Serving: %s", filepath);
 
-        struct stat st;
-        if (stat(filepath, &st) != 0) {
-            ESP_LOGE(TAG, "File not found: %s", filepath);
-            httpd_resp_send_404(req);
-            return ESP_FAIL;
-        }
-
         int fd = open(filepath, O_RDONLY);
         if (fd < 0) {
             ESP_LOGE(TAG, "Failed to open: %s", filepath);
@@ -85,7 +119,6 @@ esp_err_t start_web_server(void)
         }
 
         httpd_resp_set_type(req, "text/html");
-
         char buf[512];
         ssize_t n;
         while ((n = read(fd, buf, sizeof(buf))) > 0) {
@@ -100,51 +133,6 @@ esp_err_t start_web_server(void)
         .uri       = "/",
         .method    = HTTP_GET,
         .handler   = root_handler,
-        .user_ctx  = nullptr,
-    };
-
-    // GET /assets/* — 从 LittleFS 读取静态资源文件
-    static auto assets_handler = [](httpd_req_t *req) -> esp_err_t {
-        const char *mount = CONFIG_WEB_MOUNT_POINT;
-        char filepath[512];
-        // req->uri 形如 "/assets/xxx.js"，直接拼接到 mount 路径后
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-        snprintf(filepath, sizeof(filepath), "%s%s", mount, req->uri);
-#pragma GCC diagnostic pop
-
-        ESP_LOGI(TAG, "Serving asset: %s", filepath);
-
-        int fd = open(filepath, O_RDONLY);
-        if (fd < 0) {
-            ESP_LOGW(TAG, "Asset not found: %s", filepath);
-            httpd_resp_send_404(req);
-            return ESP_FAIL;
-        }
-
-        // 根据扩展名设置 Content-Type
-        const char *type = "application/octet-stream";
-        if (strstr(req->uri, ".css"))  type = "text/css";
-        if (strstr(req->uri, ".js"))   type = "application/javascript";
-        if (strstr(req->uri, ".json")) type = "application/json";
-        if (strstr(req->uri, ".png"))  type = "image/png";
-        if (strstr(req->uri, ".svg"))  type = "image/svg+xml";
-        httpd_resp_set_type(req, type);
-
-        char buf[1024];
-        ssize_t n;
-        while ((n = read(fd, buf, sizeof(buf))) > 0) {
-            httpd_resp_send_chunk(req, buf, n);
-        }
-        close(fd);
-        httpd_resp_send_chunk(req, nullptr, 0);
-        return ESP_OK;
-    };
-
-    httpd_uri_t assets_uri = {
-        .uri       = "/assets/*",
-        .method    = HTTP_GET,
-        .handler   = assets_handler,
         .user_ctx  = nullptr,
     };
 
@@ -198,7 +186,6 @@ esp_err_t start_web_server(void)
 
     /* Register all handlers */
     httpd_register_uri_handler(s_server, &root_uri);
-    httpd_register_uri_handler(s_server, &assets_uri);
     httpd_register_uri_handler(s_server, &api_weather_uri);
     httpd_register_uri_handler(s_server, &api_system_info_uri);
     httpd_register_uri_handler(s_server, &api_wifi_connect_uri);
@@ -206,8 +193,8 @@ esp_err_t start_web_server(void)
     httpd_register_uri_handler(s_server, &api_wifi_scan_uri);
     httpd_register_uri_handler(s_server, &api_wifi_status_uri);
 
-    // 注册 404 错误处理器，将未匹配请求重定向到根页面（Captive Portal）
-    httpd_register_err_handler(s_server, HTTPD_404_NOT_FOUND, captive_portal_redirect_handler);
+    // 注册 404 错误处理器: 优先从 LittleFS 服务文件, 否则 Captive Portal 重定向
+    httpd_register_err_handler(s_server, HTTPD_404_NOT_FOUND, not_found_handler);
 
     ESP_LOGI(TAG, "Web server started on port %d, captive portal enabled", config.server_port);
     return ESP_OK;
