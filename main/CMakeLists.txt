@@ -1,22 +1,20 @@
-# Embed the server root certificate into the final binary
-#
-# (If this was a component, we would set COMPONENT_EMBED_TXTFILES here.)
-set(requires esp-tls nvs_flash esp_event esp_netif esp_http_client esp_lcd driver)
+set(requires esp_event nvs_flash esp_wifi esp_http_server dns_server mdns lwip esp_lcd driver json esp_timer)
+
 idf_build_get_property(target IDF_TARGET)
 
-if(${target} STREQUAL "linux")
-    list(APPEND requires esp_stubs protocol_examples_common)
-endif()
-
-# Add web server dependencies when enabled
+# Web server and filesystem dependencies
 if(CONFIG_ENABLE_WEB_SERVER)
-    list(APPEND requires esp_http_server esp_littlefs)
+    list(APPEND requires esp_littlefs)
 endif()
 
-idf_component_register(SRCS "esp_http_client_example.c"
-	                    "font8x16.cc"
-	                    "oled_display.cc"
+idf_component_register(SRCS "main.cc"
+                            "font8x16.cc"
+                            "oled_display.cc"
+                            "web_server/src/web_server.cc"
+                            "web_server/src/rest_api.cc"
+                            "web_server/src/fs_handler.cc"
                     INCLUDE_DIRS "."
+                                  "web_server/include"
                     PRIV_REQUIRES ${requires}
                     EMBED_TXTFILES howsmyssl_com_root_cert.pem)
 

@@ -5,6 +5,10 @@
 #include <esp_log.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <cstring>
+
+#include "web_server.h"
 
 static const char *TAG = "fs_handler";
 
@@ -26,14 +30,20 @@ static const char *get_content_type(const char *path)
 
 esp_err_t fs_static_get_handler(httpd_req_t *req)
 {
-    const char *mount_point = (const char *)req->user_ctx;
-    char filepath[256];
+    ESP_LOGI(TAG, "Request: %s", req->uri);  // 诊断日志：确认 handler 被调用
+    const char *mount_point = static_cast<const char *>(req->user_ctx);
+    char filepath[512];
 
     /* Construct full file path from URI */
     if (strcmp(req->uri, "/") == 0) {
         snprintf(filepath, sizeof(filepath), "%s/index.html", mount_point);
     } else {
+        // 注意: mount_point 通常为 "/www" (4字符), req->uri 由 HTTP 服务器限制,
+        // 实际不会超过缓冲区大小。此处抑制编译器的保守警告。
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
         snprintf(filepath, sizeof(filepath), "%s%s", mount_point, req->uri);
+#pragma GCC diagnostic pop
     }
 
     struct stat st;
@@ -57,7 +67,7 @@ esp_err_t fs_static_get_handler(httpd_req_t *req)
     /* Set Content-Type header */
     httpd_resp_set_type(req, get_content_type(filepath));
 
-    /* Enable caching with ETag-like approach using file size + mtime */
+    /* Enable caching */
     char cache_header[64];
     snprintf(cache_header, sizeof(cache_header),
              "max-age=3600, public");
@@ -75,6 +85,6 @@ esp_err_t fs_static_get_handler(httpd_req_t *req)
     close(fd);
 
     /* Send empty chunk to finalize response */
-    httpd_resp_send_chunk(req, NULL, 0);
+    httpd_resp_send_chunk(req, nullptr, 0);
     return ESP_OK;
 }
