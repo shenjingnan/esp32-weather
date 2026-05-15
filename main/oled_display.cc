@@ -61,7 +61,16 @@ extern "C" void oled_init(void)
     };
     ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config, &i2c_bus));
 
-    // ---- Step 2: 创建 LCD Panel IO 设备 ----
+    // ---- Step 2: 探测 OLED 设备（地址 0x3C）----
+    // 没有外接 OLED 模块时优雅跳过，系统继续运行
+    if (i2c_master_probe(i2c_bus, kI2cAddr, 100) != ESP_OK) {
+        ESP_LOGW(TAG, "No OLED found at 0x%02X, display disabled", kI2cAddr);
+        s_panel_handle = nullptr;
+        ESP_LOGW(TAG, "OLED disabled, system continues without display");
+        return;
+    }
+
+    // ---- Step 3: 安装 SSD1306（设备已确认存在，出错即硬件故障）----
     ESP_LOGI(TAG, "Installing panel IO (addr=0x%02X)", kI2cAddr);
     esp_lcd_panel_io_handle_t io_handle = nullptr;
     esp_lcd_panel_io_i2c_config_t io_config = {
@@ -74,7 +83,6 @@ extern "C" void oled_init(void)
     };
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c(i2c_bus, &io_config, &io_handle));
 
-    // ---- Step 3: 安装 SSD1306 面板驱动 ----
     ESP_LOGI(TAG, "Installing SSD1306 panel driver (%dx%d)", kHorRes, kVerRes);
     esp_lcd_panel_dev_config_t panel_config = {};
     panel_config.bits_per_pixel = 1;
@@ -86,16 +94,11 @@ extern "C" void oled_init(void)
 
     ESP_ERROR_CHECK(esp_lcd_new_panel_ssd1306(io_handle, &panel_config, &s_panel_handle));
 
-    // ---- Step 4: 复位、初始化、开启显示 ----
+    ESP_LOGI(TAG, "Resetting and initializing panel");
     ESP_ERROR_CHECK(esp_lcd_panel_reset(s_panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_init(s_panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(s_panel_handle, true));
-
-    // ---- Step 5: 翻转显示（修正屏幕倒置问题）----
     ESP_ERROR_CHECK(esp_lcd_panel_mirror(s_panel_handle, true, true));
-
-    // ---- Step 6: 颜色反转 ----
-    // false: 暗底亮字（bit=1 发光）
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(s_panel_handle, false));
 
     ESP_LOGI(TAG, "OLED init done");
@@ -104,7 +107,6 @@ extern "C" void oled_init(void)
 extern "C" void oled_show_text(const char *text)
 {
     if (s_panel_handle == nullptr) {
-        ESP_LOGE(TAG, "OLED not initialized, call oled_init() first");
         return;
     }
 
