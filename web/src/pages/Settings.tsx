@@ -20,7 +20,7 @@ export function Settings() {
       <div class="card">
         <div class="card-title">天气 API</div>
         <div class="form-group">
-          <label class="form-label" htmlFor="apiKey">心知天气 API Key</label>
+          <label class="form-label" htmlFor="apiKey">彩云天气 API Key</label>
           <input
             id="apiKey"
             class="input"

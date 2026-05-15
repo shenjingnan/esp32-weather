@@ -106,7 +106,11 @@ export function WifiConfig({ onConnected }: WifiConfigProps) {
 
       {connectionPhase === 'connected' && (
         <div class="wifi-status wifi-status-success">
-          <span>连接成功！IP: {connectionIp}</span>
+          <span>连接成功！IP: <strong>{connectionIp}</strong></span>
+          <p style="margin-top:8px;font-size:14px;opacity:0.9">
+            请断开设备热点，在浏览器中访问<br />
+            <strong>http://{connectionIp}/</strong>
+          </p>
         </div>
       )}
 
