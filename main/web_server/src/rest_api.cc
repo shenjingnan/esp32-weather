@@ -15,6 +15,7 @@
 #include <esp_system.h>
 
 #include "web_server.h"
+#include "weather_api.h"
 
 static const char *TAG = "rest_api";
 
@@ -54,12 +55,24 @@ static bool is_encrypted(wifi_auth_mode_t auth_mode)
 /* GET /api/weather - Return weather data */
 esp_err_t rest_api_get_weather(httpd_req_t *req)
 {
+    weather_data_t data;
+    esp_err_t ret = weather_fetch(&data);
+
+    if (ret != ESP_OK || !data.valid) {
+        cJSON *err = cJSON_CreateObject();
+        cJSON_AddStringToObject(err, "error", "weather_unavailable");
+        cJSON_AddStringToObject(err, "message",
+            ret == ESP_ERR_INVALID_STATE ? "API Key 未配置，请在设置页面配置彩云天气 API Key" :
+                                           "天气数据获取失败，请检查网络连接");
+        return send_json_response(req, 503, err);
+    }
+
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "location", "Beijing");           // TODO: from NVS config
-    cJSON_AddNumberToObject(root, "temperature", 22);               // TODO: from weather_api component
-    cJSON_AddNumberToObject(root, "humidity", 65);                  // TODO: from weather_api component
-    cJSON_AddStringToObject(root, "description", "晴转多云");
-    cJSON_AddStringToObject(root, "icon", "sunny");
+    cJSON_AddStringToObject(root, "location", data.location);
+    cJSON_AddNumberToObject(root, "temperature", data.temperature);
+    cJSON_AddNumberToObject(root, "humidity", data.humidity);
+    cJSON_AddStringToObject(root, "description", data.description);
+    cJSON_AddStringToObject(root, "icon", data.icon);
 
     return send_json_response(req, 200, root);
 }
@@ -242,9 +255,13 @@ esp_err_t rest_api_post_system_config(httpd_req_t *req)
 
     cJSON *apiKey = cJSON_GetObjectItemCaseSensitive(root, "apiKey");
 
-    if (cJSON_IsString(apiKey)) {
-        ESP_LOGI(TAG, "API Key configured (length=%d)", strlen(apiKey->valuestring));
-        /* TODO: Save to NVS via nvs_config component */
+    if (cJSON_IsString(apiKey) && strlen(apiKey->valuestring) > 0) {
+        esp_err_t save_ret = weather_save_config(apiKey->valuestring);
+        if (save_ret == ESP_OK) {
+            ESP_LOGI(TAG, "API Key saved to NVS (length=%d)", strlen(apiKey->valuestring));
+        } else {
+            ESP_LOGE(TAG, "Failed to save API Key to NVS: %s", esp_err_to_name(save_ret));
+        }
     }
 
     cJSON *resp = cJSON_CreateObject();

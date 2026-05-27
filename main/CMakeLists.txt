@@ -7,6 +7,8 @@ if(CONFIG_ENABLE_WEB_SERVER)
     list(APPEND requires esp_littlefs)
 endif()
 
+set(requires ${requires} weather_api)
+
 idf_component_register(SRCS "main.cc"
                             "font8x16.cc"
                             "oled_display.cc"

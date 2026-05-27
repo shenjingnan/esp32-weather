@@ -60,7 +60,7 @@ static esp_err_t not_found_handler(httpd_req_t *req, httpd_err_code_t err)
 
     int fd = open(filepath, O_RDONLY);
     if (fd >= 0) {
-        ESP_LOGI(TAG, "404→file: %s", filepath);
+        ESP_LOGI(TAG, "serve→file: %s", filepath);
 
         const char *type = "application/octet-stream";
         if (strstr(uri, ".html")) type = "text/html";
@@ -100,6 +100,7 @@ esp_err_t start_web_server(void)
     config.server_port = CONFIG_WEB_SERVER_PORT;
     config.max_open_sockets = 13;
     config.lru_purge_enable = true;
+    config.stack_size = 8192;
 
     /* Register URI handlers */
 

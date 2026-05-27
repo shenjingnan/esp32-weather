@@ -52,17 +52,25 @@ static void init_mdns(void)
     ESP_LOGI(TAG, "mDNS initialized: http://%s.local/", CONFIG_MDNS_HOST_NAME);
 }
 
-// 预留: 当 STA 获得 IP 后可调用此函数触发 mDNS announce
-/*
-static void mdns_announce_sta(void *arg)
+// 在 STA/AP 接口上主动公告 mDNS 服务
+static void mdns_announce_all(void)
 {
-    esp_netif_t *sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
-    if (sta_netif) {
-        ESP_ERROR_CHECK(mdns_netif_action(sta_netif, MDNS_EVENT_ANNOUNCE_IP4));
+    esp_netif_t *sta = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    esp_netif_t *ap = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+
+    if (sta) {
+        ESP_ERROR_CHECK(mdns_netif_action(sta, MDNS_EVENT_ANNOUNCE_IP4));
         ESP_LOGI(TAG, "mDNS announced on STA interface");
     }
+    if (ap) {
+        esp_err_t err = mdns_netif_action(ap, MDNS_EVENT_ANNOUNCE_IP4);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "mDNS announced on AP interface");
+        } else {
+            ESP_LOGD(TAG, "mDNS announce on AP skipped (%s)", esp_err_to_name(err));
+        }
+    }
 }
-*/
 
 // ==================== 事件处理 ====================
 
@@ -111,6 +119,7 @@ static void ip_event_handler(void *arg, esp_event_base_t event_base,
         if (!s_mdns_initialized) {
             s_mdns_initialized = true;
             init_mdns();
+            mdns_announce_all();
         }
     }
 }

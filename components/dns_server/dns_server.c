@@ -147,13 +147,6 @@ static int parse_dns_request(char *req, size_t req_len, char *dns_reply, size_t 
 
         ESP_LOGD(TAG, "Received type: %d | Class: %d | Question for: %s", qd_type, qd_class, name);
 
-        // 跳过 .local 域名查询，避免 DNS Server 劫持 mDNS 相关查询
-        size_t name_len = strlen(name);
-        if (name_len > 6 && strcmp(name + name_len - 6, ".local") == 0) {
-            ESP_LOGD(TAG, "Skipping .local domain query: %s", name);
-            continue;
-        }
-
         if (qd_type == QD_TYPE_A) {
             esp_ip4_addr_t ip = { .addr = IPADDR_ANY };
             // 检查配置规则决定是否回答此问题
