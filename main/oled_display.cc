@@ -20,6 +20,8 @@
 #include <esp_lcd_panel_ops.h>
 #include <esp_lcd_panel_vendor.h>
 #include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 #include "font8x16.h"
 
@@ -98,7 +100,6 @@ extern "C" void oled_init(void)
     ESP_ERROR_CHECK(esp_lcd_panel_reset(s_panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_init(s_panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(s_panel_handle, true));
-    ESP_ERROR_CHECK(esp_lcd_panel_mirror(s_panel_handle, true, true));
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(s_panel_handle, false));
 
     ESP_LOGI(TAG, "OLED init done");
@@ -133,4 +134,82 @@ extern "C" void oled_clear(void)
     ESP_ERROR_CHECK(
         esp_lcd_panel_draw_bitmap(s_panel_handle, 0, 0, kHorRes, kVerRes, s_framebuffer)
     );
+}
+
+// ========== 滚动显示 ==========
+
+static TaskHandle_t s_scroll_task = nullptr;
+static volatile bool s_scroll_active = false;
+static char s_scroll_text[128] = {};
+
+static void scroll_task(void *arg)
+{
+    (void)arg;
+    const int y = (kVerRes - 16) / 2 + 16;  // 垂直居中基线
+    int total_width = 0;                     // 由 font_draw_mixed 计算
+
+    int scroll_x = kHorRes;  // 从屏幕右端开始
+
+    while (s_scroll_active) {
+        memset(s_framebuffer, 0, sizeof(s_framebuffer));
+
+        total_width = font_draw_mixed(s_framebuffer, kHorRes, kVerRes,
+                                      s_scroll_text, scroll_x, y);
+
+        ESP_ERROR_CHECK(
+            esp_lcd_panel_draw_bitmap(s_panel_handle, 0, 0, kHorRes, kVerRes, s_framebuffer)
+        );
+
+        scroll_x -= 2;                     // 每次左移 2 像素
+        if (scroll_x < -total_width) {
+            scroll_x = kHorRes;             // 全部滚出左端后循环
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(30));     // ~33fps
+    }
+
+    s_scroll_task = nullptr;
+    vTaskDelete(nullptr);
+}
+
+extern "C" void oled_start_scroll(const char *text)
+{
+    if (s_panel_handle == nullptr) {
+        return;
+    }
+
+    // 如果有正在运行的滚动任务，先停止
+    if (s_scroll_task != nullptr) {
+        oled_stop_scroll();
+    }
+
+    strncpy(s_scroll_text, text, sizeof(s_scroll_text) - 1);
+    s_scroll_text[sizeof(s_scroll_text) - 1] = '\0';
+
+    s_scroll_active = true;
+    BaseType_t ret = xTaskCreate(scroll_task, "oled_scroll", 3072,
+                                 nullptr, 5, &s_scroll_task);
+    if (ret != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create scroll task");
+        s_scroll_active = false;
+        s_scroll_task = nullptr;
+    }
+}
+
+extern "C" void oled_stop_scroll(void)
+{
+    if (s_scroll_task == nullptr) {
+        return;
+    }
+
+    s_scroll_active = false;
+
+    // 等待任务退出
+    TickType_t timeout = xTaskGetTickCount() + pdMS_TO_TICKS(200);
+    while (s_scroll_task != nullptr && xTaskGetTickCount() < timeout) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
+    s_scroll_task = nullptr;
+    oled_clear();
 }

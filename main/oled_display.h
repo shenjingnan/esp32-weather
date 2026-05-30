@@ -27,6 +27,22 @@ void oled_show_text(const char *text);
  */
 void oled_clear(void);
 
+/**
+ * 开始水平滚动显示文字（marquee 效果）
+ *
+ * 创建 FreeRTOS 任务持续从右向左循环滚动文字，
+ * 直到 oled_stop_scroll() 被调用。
+ * 仅支持 ASCII 字符，非 ASCII 会被替换为 '?'。
+ *
+ * @param text  要滚动显示的文字内容
+ */
+void oled_start_scroll(const char *text);
+
+/**
+ * 停止滚动并清屏
+ */
+void oled_stop_scroll(void);
+
 #ifdef __cplusplus
 }
 #endif
