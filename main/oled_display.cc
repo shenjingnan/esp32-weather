@@ -99,6 +99,7 @@ extern "C" void oled_init(void)
     ESP_LOGI(TAG, "Resetting and initializing panel");
     ESP_ERROR_CHECK(esp_lcd_panel_reset(s_panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_init(s_panel_handle));
+    ESP_ERROR_CHECK(esp_lcd_panel_mirror(s_panel_handle, true, true));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(s_panel_handle, true));
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(s_panel_handle, false));
 
@@ -146,9 +147,12 @@ static void scroll_task(void *arg)
 {
     (void)arg;
     const int y = (kVerRes - 16) / 2 + 16;  // 垂直居中基线
-    int total_width = 0;                     // 由 font_draw_mixed 计算
 
-    int scroll_x = kHorRes;  // 从屏幕右端开始
+    // 先渲染一次到临时缓冲区以计算文本总宽度
+    uint8_t tmp_fb[kHorRes * kVerRes / 8] = {};
+    int total_width = font_draw_mixed(tmp_fb, kHorRes, kVerRes,
+                                      s_scroll_text, 0, y);
+    int scroll_x = kHorRes;  // 从屏幕右端外侧开始
 
     while (s_scroll_active) {
         memset(s_framebuffer, 0, sizeof(s_framebuffer));
