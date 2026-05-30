@@ -22,18 +22,18 @@ idf_component_register(SRCS "main.cc"
 
 # ====== Web frontend: embed LittleFS partition image into firmware ======
 if(CONFIG_ENABLE_WEB_SERVER)
-    set(WEB_DIST_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../web/dist")
+    set(WEB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../web")
 
-    if(EXISTS ${WEB_DIST_DIR})
+    if(EXISTS ${WEB_DIR})
         littlefs_create_partition_image(
-            www ${WEB_DIST_DIR}
+            www ${WEB_DIR}
             FLASH_IN_PROJECT
         )
-        message(STATUS "Web frontend found at ${WEB_DIST_DIR}, embedding into www partition")
+        message(STATUS "Web frontend found at ${WEB_DIR}, embedding into www partition")
     else()
         message(WARNING
-            "Web frontend not built. "
-            "Run 'cd web && pnpm install && pnpm build' first, "
+            "Web frontend not found. "
+            "Ensure web/index.html exists, "
             "or disable CONFIG_ENABLE_WEB_SERVER in menuconfig."
         )
     endif()

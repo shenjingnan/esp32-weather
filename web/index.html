@@ -1,12 +1,450 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ESP32 Weather</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ESP32 天气站 - WiFi 配置</title>
+<style>
+:root {
+  --color-primary: #1976d2;
+  --color-bg: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-text: #333333;
+  --color-text-secondary: #666666;
+  --color-border: #e0e0e0;
+  --color-success: #4caf50;
+  --color-error: #f44336;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+.wifi-portal {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 16px;
+  background: #f0f2f5;
+}
+.wifi-card {
+  background: var(--color-surface);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  width: 100%;
+  max-width: 360px;
+}
+.wifi-card-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: center;
+  margin-bottom: 4px;
+}
+.wifi-card-desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin-bottom: 20px;
+}
+.form-group { margin-bottom: 12px; }
+.form-label {
+  display: block;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input:focus { border-color: var(--color-primary); }
+.btn {
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+.btn:hover { opacity: 0.9; }
+.btn-primary { background: var(--color-primary); color: white; }
+.btn-block { width: 100%; }
+.btn-outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+.btn-outline:hover { background: rgba(25, 118, 210, 0.06); }
+.btn-outline:disabled {
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+  cursor: not-allowed;
+  background: transparent;
+  opacity: 1;
+}
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+.wifi-list {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  margin-top: 8px;
+  margin-bottom: 12px;
+  background: #fafafa;
+}
+.wifi-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  transition: background 0.15s ease;
+}
+.wifi-item:last-child { border-bottom: none; }
+.wifi-item:hover { background: #e8f0fe; }
+.wifi-item:active { background: #d0e2f7; }
+.wifi-name {
+  flex: 1;
+  font-size: 14px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+.wifi-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.wifi-lock { font-size: 12px; color: var(--color-text-secondary); }
+.wifi-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  height: 14px;
+  gap: 1px;
+}
+.wifi-bars span {
+  display: block;
+  width: 3px;
+  background: #ccc;
+  border-radius: 1px;
+}
+.wifi-bars span.on { background: var(--color-primary); }
+.wifi-bars span:nth-child(1) { height: 4px; }
+.wifi-bars span:nth-child(2) { height: 7px; }
+.wifi-bars span:nth-child(3) { height: 10px; }
+.wifi-bars span:nth-child(4) { height: 14px; }
+.wifi-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.wifi-status-success {
+  background: #e8f5e9;
+  color: var(--color-success);
+  border: 1px solid #c8e6c9;
+}
+.wifi-status-error {
+  background: #ffebee;
+  color: var(--color-error);
+  border: 1px solid #ffcdd2;
+}
+.wifi-status-pending {
+  background: #e3f2fd;
+  color: var(--color-primary);
+  border: 1px solid #bbdefb;
+}
+.wifi-status-pending .wifi-status-msg { display: flex; align-items: center; }
+.wifi-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.scan-error {
+  text-align: center;
+  padding: 16px 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="wifi-portal">
+    <div class="wifi-card">
+      <h2 class="wifi-card-title">WiFi 配置</h2>
+      <p class="wifi-card-desc">请连接 WiFi 网络以使用天气功能</p>
+      <div id="wifi-content"><p class="scan-error" style="padding:0">加载中...</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---- API wrapper ---- */
+  function apiGet(path) {
+    return fetch(path).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    });
+  }
+  function apiPost(path, data) {
+    return fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    });
+  }
+
+  /* ---- Wi-Fi signal bars ---- */
+  function renderBarsHtml(bars) {
+    var s = '<span class="wifi-bars">';
+    for (var i = 1; i <= 4; i++) {
+      s += '<span' + (i <= bars ? ' class="on"' : '') + '></span>';
+    }
+    s += '</span>';
+    return s;
+  }
+
+  /* ---- State ---- */
+  var connectionPhase = 'idle'; // idle | connecting | connected | failed
+  var connectionIp   = '';
+  var connectionReason = '';
+  var ssid           = '';
+  var password       = '';
+  var pwdPlaceholder = '输入 WiFi 密码';
+  var saving         = false;
+  var scanResults    = [];
+  var scanning       = false;
+  var scanError      = '';
+  var pollTimer      = null;
+
+  var contentEl = document.getElementById('wifi-content');
+
+  /* ---- Escape helpers ---- */
+  function escHtml(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function escAttr(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  /* ---- Render ---- */
+  function render() {
+    var h = '';
+
+    if (connectionPhase === 'connected') {
+      h += '<div class="wifi-status wifi-status-success"><span>连接成功！IP: <strong>' + escHtml(connectionIp) + '</strong></span></div>' +
+        '<p style="margin-top:8px;font-size:14px;opacity:0.9">请断开设备热点，在浏览器中访问<br>' +
+        '<strong>http://' + escHtml(connectionIp) + '/</strong></p>';
+
+    } else if (connectionPhase === 'failed') {
+      h += '<div class="wifi-status wifi-status-error">' +
+        '<span>连接失败: ' + escHtml(connectionReason) + '</span>' +
+        '<button class="btn btn-outline btn-sm" id="btn-retry">重试</button></div>';
+
+    } else if (connectionPhase === 'connecting') {
+      h += '<div class="wifi-status wifi-status-pending">' +
+        '<span class="wifi-status-msg"><span class="wifi-spinner"></span>正在连接 WiFi...</span></div>';
+
+    } else {
+      /* idle – form */
+      h += '<div class="form-group">' +
+        '<label class="form-label" for="ssid-input">SSID</label>' +
+        '<input id="ssid-input" class="input" type="text" placeholder="输入 WiFi 名称或扫描选择" value="' + escAttr(ssid) + '">' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label class="form-label" for="password-input">密码</label>' +
+        '<input id="password-input" class="input" type="password" placeholder="' + escAttr(pwdPlaceholder) + '" value="' + escAttr(password) + '">' +
+        '</div>' +
+        '<button class="btn btn-outline btn-block" id="btn-scan"' + (scanning ? ' disabled' : '') + '>' +
+        (scanning ? '扫描中...' : '扫描附近 WiFi') + '</button>';
+
+      /* scan results */
+      if (scanResults.length > 0) {
+        h += '<div class="wifi-list" id="wifi-list">';
+        for (var i = 0; i < scanResults.length; i++) {
+          var ap = scanResults[i];
+          h += '<div class="wifi-item" data-idx="' + i + '">' +
+            '<span class="wifi-name">' + escHtml(ap.ssid) + '</span>' +
+            '<span class="wifi-meta">' +
+            (ap.encrypted ? '<span class="wifi-lock">&#x1F512;</span>' : '') +
+            renderBarsHtml(ap.bars) + '</span></div>';
+        }
+        h += '</div>';
+      }
+
+      if (scanError) {
+        h += '<div class="scan-error">' + escHtml(scanError) + '</div>';
+      }
+
+      h += '<button class="btn btn-primary btn-block" id="btn-connect"' +
+        (saving || !ssid ? ' disabled' : '') + '>' +
+        (saving ? '保存中...' : '连接 WiFi') + '</button>';
+    }
+
+    contentEl.innerHTML = h;
+    bindEvents();
+  }
+
+  /* ---- Event binding ---- */
+  function bindEvents() {
+    var el;
+    (el = document.getElementById('btn-scan'))    && (el.onclick = handleScan);
+    (el = document.getElementById('btn-connect')) && (el.onclick = handleConnect);
+    (el = document.getElementById('btn-retry'))   && (el.onclick = resetConnection);
+
+    (el = document.getElementById('ssid-input')) && (el.oninput = function () { ssid = this.value; });
+    (el = document.getElementById('password-input')) && (el.oninput = function () { password = this.value; });
+
+    /* click-to-select on scan list */
+    (el = document.getElementById('wifi-list')) && (el.onclick = function (e) {
+      var item = e.target.closest('.wifi-item');
+      if (item) {
+        var idx = parseInt(item.getAttribute('data-idx'), 10);
+        if (!isNaN(idx) && scanResults[idx]) selectNetwork(scanResults[idx]);
+      }
+    });
+  }
+
+  /* ---- Scan ---- */
+  function handleScan() {
+    if (scanning) return;
+    scanning = true; scanError = ''; scanResults = [];
+    render();
+
+    apiGet('/api/wifi/scan').then(function (results) {
+      results.sort(function (a, b) { return b.rssi - a.rssi; });
+      scanResults = results;
+    }).catch(function () {
+      scanError = '扫描失败，请重试';
+    }).then(function () {
+      scanning = false;
+      render();
+    });
+  }
+
+  /* ---- Select network from list ---- */
+  function selectNetwork(ap) {
+    ssid = ap.ssid;
+    password = '';
+    pwdPlaceholder = ap.encrypted ? '请输入 WiFi 密码' : '开放网络，无需密码';
+    render();
+    var inp = document.getElementById('password-input');
+    if (inp) inp.focus();
+  }
+
+  /* ---- Connect ---- */
+  function handleConnect() {
+    if (saving || !ssid) return;
+
+    var si = document.getElementById('ssid-input');
+    var pi = document.getElementById('password-input');
+    ssid = si ? si.value : ssid;
+    password = pi ? pi.value : password;
+    if (!ssid) return;
+
+    saving = true;
+    render();
+
+    apiPost('/api/wifi/connect', { ssid: ssid, password: password }).then(function () {
+      connectionPhase = 'connecting';
+      saving = false;
+      render();
+      startPolling();
+    }).catch(function () {
+      connectionPhase = 'failed';
+      connectionReason = '请求失败，请重试';
+      saving = false;
+      render();
+    });
+  }
+
+  /* ---- Polling ---- */
+  function startPolling() {
+    stopPolling();
+    pollTimer = setInterval(function () {
+      apiGet('/api/wifi/status').then(function (status) {
+        if (status.status === 'connected') {
+          connectionPhase = 'connected';
+          connectionIp = status.ip || '';
+          stopPolling();
+          render();
+        } else if (status.status === 'failed') {
+          connectionPhase = 'failed';
+          connectionReason = status.reason || '未知错误';
+          stopPolling();
+          render();
+        }
+      }).catch(function () {});
+    }, 1500);
+  }
+
+  function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  /* ---- Reset ---- */
+  function resetConnection() {
+    connectionPhase = 'idle';
+    connectionIp = '';
+    connectionReason = '';
+    ssid = '';
+    password = '';
+    pwdPlaceholder = '输入 WiFi 密码';
+    scanResults = [];
+    scanError = '';
+    stopPolling();
+    render();
+  }
+
+  /* ---- Init: check current Wi-Fi status ---- */
+  function init() {
+    apiGet('/api/wifi/status').then(function (status) {
+      if (status.status === 'connected') {
+        connectionPhase = 'connected';
+        connectionIp = status.ip || '';
+      }
+    }).catch(function () {}).then(function () {
+      render();
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
 </html>
