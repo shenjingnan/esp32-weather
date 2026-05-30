@@ -16,6 +16,8 @@
 #include "mdns.h"
 #include "nvs_flash.h"
 #include "lwip/inet.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "dns_server.h"
 #include "web_server.h"
@@ -94,10 +96,12 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         snprintf(s_wifi_fail_reason, sizeof(s_wifi_fail_reason),
                  "%s (reason=%d)", get_disconnect_reason(event->reason), event->reason);
 
-        // 更新 OLED
-        char msg[64];
+        // 更新 OLED：先显示失败信息，5 秒后重新滚动提示配网
+        char msg[128];
         snprintf(msg, sizeof(msg), "WiFi Failed:%d", event->reason);
         oled_show_text(msg);
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        oled_start_scroll("WIFI失败,连接热点重试");
     }
 }
 
@@ -110,7 +114,8 @@ static void ip_event_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "STA got ip: %s", s_wifi_status_ip);
         s_wifi_connect_state = 2;  // connected
 
-        // 更新 OLED
+        // 停止滚动，显示连接成功
+        oled_stop_scroll();
         char msg[64];
         snprintf(msg, sizeof(msg), "WiFi OK\n%s", s_wifi_status_ip);
         oled_show_text(msg);
@@ -161,20 +166,31 @@ static void wifi_init_apsta(void)
     ESP_LOGI(TAG, "AP started: SSID='%s' IP=%s", ssid, ip_addr);
 
     // OLED 显示 AP 信息
-    char msg[64];
+    char msg[128];
     snprintf(msg, sizeof(msg), "AP:%s", ssid);
     oled_show_text(msg);
 
-    // 自动重连：检查 NVS 中是否有已保存的 STA 配置
+    // 检查 NVS 中是否有已保存的 STA 配置
+    bool has_saved_creds = false;
     wifi_config_t existing_config = {};
     if (esp_wifi_get_config(WIFI_IF_STA, &existing_config) == ESP_OK) {
         if (strlen(reinterpret_cast<char *>(existing_config.sta.ssid)) > 0) {
-            s_wifi_connect_state = 1;  // connecting
-            ESP_LOGI(TAG, "Found saved WiFi: '%s', auto-connecting...",
-                     reinterpret_cast<char *>(existing_config.sta.ssid));
-            oled_show_text("Connecting...");
-            esp_wifi_connect();
+            has_saved_creds = true;
         }
+    }
+
+    if (has_saved_creds) {
+        s_wifi_connect_state = 1;  // connecting
+        ESP_LOGI(TAG, "Found saved WiFi: '%s', auto-connecting...",
+                 reinterpret_cast<char *>(existing_config.sta.ssid));
+        oled_show_text("Connecting...");
+        esp_wifi_connect();
+    } else {
+        // 首次使用：静态显示 AP 名称 3 秒后启动滚动配网提示
+        vTaskDelay(pdMS_TO_TICKS(3000));
+        snprintf(msg, sizeof(msg),
+                 "请连接WIFI:%s 完成配网", ssid);
+        oled_start_scroll(msg);
     }
 }
 
