@@ -215,6 +215,32 @@ esp_err_t rest_api_post_wifi_connect(httpd_req_t *req)
     return ESP_OK;
 }
 
+/* GET /api/system/config - Read system configuration (API Key status) */
+esp_err_t rest_api_get_system_config(httpd_req_t *req)
+{
+    char api_key[64] = {0};
+    esp_err_t ret = weather_get_config(api_key, sizeof(api_key));
+
+    cJSON *root = cJSON_CreateObject();
+    bool configured = (ret == ESP_OK && strlen(api_key) > 0);
+    cJSON_AddBoolToObject(root, "configured", configured);
+
+    if (configured) {
+        size_t len = strlen(api_key);
+        char masked[64];
+        if (len > 4) {
+            snprintf(masked, sizeof(masked), "****%s", api_key + len - 4);
+        } else {
+            snprintf(masked, sizeof(masked), "****");
+        }
+        cJSON_AddStringToObject(root, "apiKey", masked);
+    } else {
+        cJSON_AddStringToObject(root, "apiKey", "");
+    }
+
+    return send_json_response(req, 200, root);
+}
+
 /* POST /api/system/config - Save system configuration (e.g., API key) */
 esp_err_t rest_api_post_system_config(httpd_req_t *req)
 {

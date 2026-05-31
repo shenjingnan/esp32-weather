@@ -68,6 +68,26 @@ esp_err_t weather_save_config(const char *api_key)
     return ret;
 }
 
+esp_err_t weather_get_config(char *out_api_key, size_t buf_size)
+{
+    nvs_handle_t handle;
+    esp_err_t ret = nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle);
+    if (ret != ESP_OK) {
+        if (out_api_key && buf_size > 0) out_api_key[0] = '\0';
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    size_t len = buf_size;
+    ret = nvs_get_str(handle, NVS_KEY_APIKEY, out_api_key, &len);
+    nvs_close(handle);
+
+    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+        if (out_api_key && buf_size > 0) out_api_key[0] = '\0';
+        return ESP_ERR_INVALID_STATE;
+    }
+    return ret;
+}
+
 /* ---- HTTP 响应接收 ---- */
 
 typedef struct {

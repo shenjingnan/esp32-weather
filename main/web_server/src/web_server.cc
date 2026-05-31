@@ -158,6 +158,13 @@ esp_err_t start_web_server(void)
         .user_ctx  = nullptr,
     };
 
+    httpd_uri_t api_get_system_config_uri = {
+        .uri       = "/api/system/config",
+        .method    = HTTP_GET,
+        .handler   = rest_api_get_system_config,
+        .user_ctx  = nullptr,
+    };
+
     httpd_uri_t api_system_config_uri = {
         .uri       = "/api/system/config",
         .method    = HTTP_POST,
@@ -190,6 +197,7 @@ esp_err_t start_web_server(void)
     httpd_register_uri_handler(s_server, &api_weather_uri);
     httpd_register_uri_handler(s_server, &api_system_info_uri);
     httpd_register_uri_handler(s_server, &api_wifi_connect_uri);
+    httpd_register_uri_handler(s_server, &api_get_system_config_uri);
     httpd_register_uri_handler(s_server, &api_system_config_uri);
     httpd_register_uri_handler(s_server, &api_wifi_scan_uri);
     httpd_register_uri_handler(s_server, &api_wifi_status_uri);

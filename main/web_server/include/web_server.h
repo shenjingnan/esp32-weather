@@ -58,6 +58,9 @@ esp_err_t rest_api_get_weather(httpd_req_t *req);
 /** GET /api/system/info - Return device system info */
 esp_err_t rest_api_get_system_info(httpd_req_t *req);
 
+/** GET /api/system/config - Read system configuration */
+esp_err_t rest_api_get_system_config(httpd_req_t *req);
+
 /** POST /api/system/config - Save system configuration */
 esp_err_t rest_api_post_system_config(httpd_req_t *req);
 

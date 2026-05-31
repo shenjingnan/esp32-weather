@@ -39,6 +39,14 @@ esp_err_t weather_fetch(weather_data_t *out_data);
  */
 esp_err_t weather_save_config(const char *api_key);
 
+/**
+ * @brief 从 NVS 读取 API Key 配置
+ * @param out_api_key 输出缓冲区，存储 API Key（未配置时为空字符串）
+ * @param buf_size 输出缓冲区大小
+ * @return ESP_OK 表示已配置，ESP_ERR_INVALID_STATE 表示未配置
+ */
+esp_err_t weather_get_config(char *out_api_key, size_t buf_size);
+
 #ifdef __cplusplus
 }
 #endif

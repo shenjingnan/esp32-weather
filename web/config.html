@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ESP32 天气站 - API 配置</title>
+<style>
+:root {
+  --color-primary: #1976d2;
+  --color-bg: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-text: #333333;
+  --color-text-secondary: #666666;
+  --color-border: #e0e0e0;
+  --color-success: #4caf50;
+  --color-error: #f44336;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+.config-portal {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 16px;
+  background: #f0f2f5;
+}
+.config-card {
+  background: var(--color-surface);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+}
+.config-card-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: center;
+  margin-bottom: 4px;
+}
+.config-card-desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin-bottom: 20px;
+}
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 4px;
+}
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input:focus { border-color: var(--color-primary); }
+.btn {
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+.btn:hover { opacity: 0.9; }
+.btn-primary { background: var(--color-primary); color: white; }
+.btn-block { width: 100%; }
+.btn-outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+.btn-outline:hover { background: rgba(25, 118, 210, 0.06); }
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.status-badge-success {
+  background: #e8f5e9;
+  color: var(--color-success);
+  border: 1px solid #c8e6c9;
+}
+.status-badge-empty {
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffe0b2;
+}
+.config-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #fafafa;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+.config-status-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+.config-status-key {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--color-text);
+  margin-top: 2px;
+}
+.feedback {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  display: none;
+}
+.feedback-success {
+  display: block;
+  background: #e8f5e9;
+  color: var(--color-success);
+  border: 1px solid #c8e6c9;
+}
+.feedback-error {
+  display: block;
+  background: #ffebee;
+  color: var(--color-error);
+  border: 1px solid #ffcdd2;
+}
+.footer-link {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+}
+.footer-link a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.footer-link a:hover { text-decoration: underline; }
+.loading {
+  text-align: center;
+  padding: 20px 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="config-portal">
+    <div class="config-card">
+      <h2 class="config-card-title">系统设置</h2>
+      <p class="config-card-desc">配置彩云天气 API Key</p>
+      <div id="config-content"><div class="loading">加载中...</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---- API wrapper ---- */
+  function apiGet(path) {
+    return fetch(path).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    });
+  }
+  function apiPost(path, data) {
+    return fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    });
+  }
+
+  /* ---- Escape ---- */
+  function escHtml(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function escAttr(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  /* ---- State ---- */
+  var configured    = false;
+  var maskedKey     = '';
+  var apiKeyValue   = '';
+  var saving        = false;
+  var feedbackType  = '';   // 'success' | 'error' | ''
+  var feedbackMsg   = '';
+  var loading       = true;
+
+  var contentEl = document.getElementById('config-content');
+
+  /* ---- Render ---- */
+  function render() {
+    if (loading) {
+      contentEl.innerHTML = '<div class="loading">加载中...</div>';
+      return;
+    }
+
+    var h = '';
+
+    /* Current status */
+    if (configured) {
+      h += '<div class="config-status">' +
+        '<div><div class="config-status-label">当前状态</div>' +
+        '<div class="config-status-key">' + escHtml(maskedKey) + '</div></div>' +
+        '<span class="status-badge status-badge-success">已配置</span></div>';
+    } else {
+      h += '<div class="config-status">' +
+        '<div><div class="config-status-label">当前状态</div>' +
+        '<div class="config-status-key">未设置 API Key</div></div>' +
+        '<span class="status-badge status-badge-empty">未配置</span></div>';
+    }
+
+    /* Feedback */
+    if (feedbackType) {
+      h += '<div class="feedback feedback-' + feedbackType + '">' + escHtml(feedbackMsg) + '</div>';
+    }
+
+    /* API Key input form */
+    h += '<div class="form-group">' +
+      '<label class="form-label" for="apikey-input">彩云天气 API Key</label>' +
+      '<input id="apikey-input" class="input" type="password" placeholder="' +
+      (configured ? '输入新 Key 以替换当前配置' : '请输入彩云天气 API Key') +
+      '" value="' + escAttr(apiKeyValue) + '">' +
+      '</div>' +
+      '<button class="btn btn-primary btn-block" id="btn-save"' +
+      (saving ? ' disabled' : '') + '>' +
+      (saving ? '保存中...' : '保存') + '</button>';
+
+    if (configured) {
+      h += '<p style="margin-top:8px;font-size:12px;color:var(--color-text-secondary);text-align:center;">' +
+        '输入新的 Key 并保存将替换当前配置</p>';
+    }
+
+    /* Footer link */
+    h += '<div class="footer-link"><a href="/">&#8592; 返回 WiFi 配置</a></div>';
+
+    contentEl.innerHTML = h;
+    bindEvents();
+  }
+
+  /* ---- Event binding ---- */
+  function bindEvents() {
+    var el;
+    (el = document.getElementById('btn-save')) && (el.onclick = handleSave);
+    (el = document.getElementById('apikey-input')) && (el.oninput = function () {
+      apiKeyValue = this.value;
+      if (feedbackType) { feedbackType = ''; feedbackMsg = ''; render(); }
+    });
+  }
+
+  /* ---- Save ---- */
+  function handleSave() {
+    if (saving) return;
+
+    var inp = document.getElementById('apikey-input');
+    var key = inp ? inp.value.trim() : '';
+
+    if (!key) {
+      feedbackType = 'error';
+      feedbackMsg = '请输入 API Key';
+      render();
+      return;
+    }
+
+    saving = true;
+    render();
+
+    apiPost('/api/system/config', { apiKey: key }).then(function () {
+      feedbackType = 'success';
+      feedbackMsg = 'API Key 保存成功';
+      saving = false;
+      /* Reload config status to get updated masked key */
+      loadConfig();
+    }).catch(function () {
+      feedbackType = 'error';
+      feedbackMsg = '保存失败，请重试';
+      saving = false;
+      render();
+    });
+  }
+
+  /* ---- Load config ---- */
+  function loadConfig() {
+    apiGet('/api/system/config').then(function (config) {
+      configured = config.configured === true;
+      maskedKey  = config.apiKey || '';
+      apiKeyValue = '';
+      feedbackType = configured ? 'success' : '';
+      feedbackMsg  = configured ? 'API Key 已配置' : '';
+    }).catch(function () {
+      configured = false;
+      maskedKey = '';
+      feedbackType = 'error';
+      feedbackMsg = '获取配置状态失败';
+    }).then(function () {
+      loading = false;
+      render();
+    });
+  }
+
+  /* ---- Init ---- */
+  loadConfig();
+})();
+</script>
+</body>
+</html>
